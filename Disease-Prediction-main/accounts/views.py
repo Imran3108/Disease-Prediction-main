@@ -32,22 +32,16 @@ def sign_in_admin(request):
  
           user = auth.authenticate(username=username,password=password)
 
-          if user is not None :
-             
-              try:
-                 if ( user.is_superuser == True ) :
-                     auth.login(request,user)
-
-                     return redirect('admin_ui')
-               
-              except :
-                  messages.info(request,'Please enter the correct username and password for a admin account.')
+          if user is not None:
+              if user.is_superuser:
+                  auth.login(request, user)
+                  return redirect('admin_ui')
+              else:
+                  messages.info(request, 'Please enter the correct username and password for an admin account.')
                   return redirect('sign_in_admin')
-
-
-          else :
-             messages.info(request,'Please enter the correct username and password for a admin account.')
-             return redirect('sign_in_admin')
+          else:
+              messages.info(request, 'Please enter the correct username and password for an admin account.')
+              return redirect('sign_in_admin')
 
 
     else :
