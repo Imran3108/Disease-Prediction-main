@@ -77,9 +77,17 @@ if [ ! -f .env ]; then
     fi
 fi
 
-# Get EC2 instance public IP for ALLOWED_HOSTS
-EC2_PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
-echo -e "${GREEN}EC2 Instance Public IP: $EC2_PUBLIC_IP${NC}"
+# Get EC2 instance public IP for ALLOWED_HOSTS (IMDSv2 with fallback)
+TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" || true)
+if [ -n "$TOKEN" ]; then
+  EC2_PUBLIC_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4 || true)
+else
+  EC2_PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || true)
+fi
+if [ -z "$EC2_PUBLIC_IP" ]; then
+  EC2_PUBLIC_IP=$(curl -s ifconfig.me || hostname -I 2>/dev/null | awk '{print $1}')
+fi
+echo -e "${GREEN}EC2 Instance Public IP: ${EC2_PUBLIC_IP}${NC}"
 
 # Get EC2 instance private IP for reference
 EC2_PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
@@ -96,7 +104,7 @@ if grep -q "DB_HOST=localhost" .env; then
     sed -i "s/DB_HOST=localhost/DB_HOST=db/" .env
 fi
 
-echo -e "${GREEN}Environment configuration updated with EC2 Public IP: $EC2_PUBLIC_IP${NC}"
+echo -e "${GREEN}Environment configuration updated with EC2 Public IP: ${EC2_PUBLIC_IP}${NC}"
 
 # Build and start containers
 echo -e "${YELLOW}Building Docker images...${NC}"
@@ -125,7 +133,7 @@ echo -e "${GREEN}========================================="
 echo "Deployment completed successfully!"
 echo "=========================================${NC}"
 echo ""
-echo "Your application is running at: http://$EC2_PUBLIC_IP:8000"
+echo "Your application is running at: http://${EC2_PUBLIC_IP}:8000"
 echo "To view logs: docker-compose logs -f"
 echo "To stop: docker-compose down"
 echo "To restart: docker-compose restart"
