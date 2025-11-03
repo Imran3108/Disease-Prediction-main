@@ -38,41 +38,65 @@ fi
 # Add current user to docker group
 sudo usermod -aG docker $USER
 
-# Create project directory if it doesn't exist
-PROJECT_DIR="/home/ubuntu/disease-prediction"
-if [ ! -d "$PROJECT_DIR" ]; then
-    echo -e "${YELLOW}Creating project directory...${NC}"
-    sudo mkdir -p $PROJECT_DIR
-    sudo chown -R $USER:$USER $PROJECT_DIR
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Try different project directory locations
+if [ -f "$SCRIPT_DIR/env.example" ]; then
+    # Script is in the project directory
+    PROJECT_DIR="$SCRIPT_DIR"
+elif [ -f "/home/ubuntu/Disease-Prediction-main/env.example" ]; then
+    PROJECT_DIR="/home/ubuntu/Disease-Prediction-main"
+elif [ -f "/home/ubuntu/disease-prediction/env.example" ]; then
+    PROJECT_DIR="/home/ubuntu/disease-prediction"
+elif [ -f "$HOME/Disease-Prediction-main/env.example" ]; then
+    PROJECT_DIR="$HOME/Disease-Prediction-main"
+elif [ -f "$HOME/disease-prediction/env.example" ]; then
+    PROJECT_DIR="$HOME/disease-prediction"
+else
+    echo -e "${RED}ERROR: Could not find project directory with env.example!${NC}"
+    echo "Please run this script from the Disease-Prediction-main directory"
+    echo "Current directory: $(pwd)"
+    exit 1
 fi
 
+echo -e "${GREEN}Found project directory: $PROJECT_DIR${NC}"
+
 # Navigate to project directory
-cd $PROJECT_DIR
+cd "$PROJECT_DIR"
 
 # Create .env file if it doesn't exist
 if [ ! -f .env ]; then
-    echo -e "${YELLOW}Creating .env file...${NC}"
-    cp env.example .env
-    echo -e "${RED}IMPORTANT: Please edit .env file with your configuration before proceeding!${NC}"
-    echo "Press Enter to continue after editing .env file..."
-    read
+    if [ -f env.example ]; then
+        echo -e "${YELLOW}Creating .env file from env.example...${NC}"
+        cp env.example .env
+    else
+        echo -e "${RED}ERROR: env.example file not found!${NC}"
+        echo "Please ensure all project files are uploaded correctly."
+        exit 1
+    fi
 fi
 
-# Get EC2 instance private IP
-EC2_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
-echo -e "${GREEN}EC2 Instance Private IP: $EC2_IP${NC}"
+# Get EC2 instance public IP for ALLOWED_HOSTS
+EC2_PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+echo -e "${GREEN}EC2 Instance Public IP: $EC2_PUBLIC_IP${NC}"
 
-# Update ALLOWED_HOSTS in .env
+# Get EC2 instance private IP for reference
+EC2_PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+echo -e "${GREEN}EC2 Instance Private IP: $EC2_PRIVATE_IP${NC}"
+
+# Update ALLOWED_HOSTS in .env with public IP
 if grep -q "ALLOWED_HOSTS" .env; then
-    sed -i "s/ALLOWED_HOSTS=.*/ALLOWED_HOSTS=${EC2_IP},localhost,127.0.0.1/" .env
+    sed -i "s|ALLOWED_HOSTS=.*|ALLOWED_HOSTS=$EC2_PUBLIC_IP,localhost,127.0.0.1|" .env
 fi
 
-# Update DB_HOST in .env (use private IP for database)
-if grep -q "DB_HOST" .env; then
-    sed -i "s/DB_HOST=.*/DB_HOST=${EC2_IP}/" .env
+# For Docker Compose, DB_HOST should be 'db' not the EC2 IP
+# Only update if it's still localhost
+if grep -q "DB_HOST=localhost" .env; then
+    sed -i "s/DB_HOST=localhost/DB_HOST=db/" .env
 fi
 
-echo -e "${GREEN}Environment configuration updated with EC2 IP: $EC2_IP${NC}"
+echo -e "${GREEN}Environment configuration updated with EC2 Public IP: $EC2_PUBLIC_IP${NC}"
 
 # Build and start containers
 echo -e "${YELLOW}Building Docker images...${NC}"
@@ -101,7 +125,7 @@ echo -e "${GREEN}========================================="
 echo "Deployment completed successfully!"
 echo "=========================================${NC}"
 echo ""
-echo "Your application is running at: http://$EC2_IP:8000"
+echo "Your application is running at: http://$EC2_PUBLIC_IP:8000"
 echo "To view logs: docker-compose logs -f"
 echo "To stop: docker-compose down"
 echo "To restart: docker-compose restart"
