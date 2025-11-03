@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    container_name: postgres_db_nginx
+    environment:
+      POSTGRES_DB: ${DB_NAME:-predico}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgresql}
+    volumes:
+      - postgres_data_nginx:/var/lib/postgresql/data
+    networks:
+      - disease_network_nginx
+    restart: unless-stopped
+
+  web:
+    build: .
+    container_name: django_app_nginx
+    command: sh -c "python manage.py migrate --noinput && gunicorn --bind 0.0.0.0:8000 --workers 3 disease_prediction.wsgi:application"
+    volumes:
+      - static_volume_nginx:/app/staticfiles
+      - media_volume_nginx:/app/pics
+    depends_on:
+      - db
+    env_file:
+      - .env
+    networks:
+      - disease_network_nginx
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    container_name: nginx_server
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - static_volume_nginx:/app/staticfiles:ro
+      - media_volume_nginx:/app/pics:ro
+    depends_on:
+      - web
+    networks:
+      - disease_network_nginx
+    restart: unless-stopped
+
+volumes:
+  postgres_data_nginx:
+  static_volume_nginx:
+  media_volume_nginx:
+
+networks:
+  disease_network_nginx:
+    driver: bridge
+
