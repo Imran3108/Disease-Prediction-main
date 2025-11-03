@@ -27,6 +27,9 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['35.172.48.105', 'localhost', '127.0.0.1']
 
+# Allow CSRF for your public IP
+CSRF_TRUSTED_ORIGINS = ['35.172.48.105']
+
 
 # Application definition
 
