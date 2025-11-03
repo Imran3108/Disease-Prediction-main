@@ -137,5 +137,5 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'pics')
 
-# WhiteNoise configuration
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# WhiteNoise configuration (non-manifest to avoid 500s on missing files)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
