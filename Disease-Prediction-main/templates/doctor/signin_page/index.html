@@ -43,7 +43,7 @@
 	<div class="limiter">
 		<div class="container-login100">
 			<div class="wrap-login100 p-l-55 p-r-55 p-t-65 p-b-54">
-				<form class="login100-form validate-form" action="sign_in_doctor" method="POST" >
+                <form class="login100-form validate-form" action="{% url 'sign_in_doctor' %}" method="POST" >
 					
   {% csrf_token %}
 
@@ -94,7 +94,7 @@
 							Don't Have An Account 
 						</span>
 
-						<a href="signup_doctor" class="txt2">
+                        <a href="{% url 'signup_doctor' %}" class="txt2">
 							Sign Up
 						</a>
 					</div>

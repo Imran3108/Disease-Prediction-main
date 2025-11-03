@@ -28,7 +28,7 @@ DEBUG = False
 ALLOWED_HOSTS = ['35.172.48.105', 'localhost', '127.0.0.1']
 
 # Allow CSRF for your public IP
-CSRF_TRUSTED_ORIGINS = ['35.172.48.105']
+CSRF_TRUSTED_ORIGINS = ['http://35.172.48.105']
 
 # Cookies over HTTP (no SSL)
 SESSION_COOKIE_SECURE = False
